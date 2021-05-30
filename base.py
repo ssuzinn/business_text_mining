@@ -11,7 +11,7 @@ class BaseDriver(metaclass=ABCMeta):
         options = webdriver.ChromeOptions()
         #options.add_argument('headless')  # 창 안띄우고 크롤링
         options.add_argument('window-size=1920x1080')
-        #options.add_argument("disable-gpu")
+        options.add_argument("disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-setuid-sandbox")
 
