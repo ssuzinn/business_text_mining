@@ -12,10 +12,9 @@ from business_text_mining.base import BaseDriver
 
 
 class NaverCafeCrawl(BaseDriver):
+    baseurl = 'https://nid.naver.com/nidlogin.login'
     def __init__(self):
         super().__init__()
-        self.base_url = 'https://nid.naver.com/nidlogin.login?mode=form&url=https%3A%2F%2Fwww.naver.com'
-        #self.driver = BaseDriver().get_driver(self.base_url)
         self.target_url = 'https://cafe.naver.com/winerack24'
         self.clubid = 20564405
         self.menu = '//*[@id="menuLink60"]'
@@ -31,7 +30,7 @@ class NaverCafeCrawl(BaseDriver):
 
     def NAVER_CAFE(self):
         self.Naver_login()
-        # self.driver.get(self.target_url)
+        self.driver.get(self.target_url)
         time.sleep(1)
         # self.driver.find_element_by_xpath(self.menu).click()
         # time.sleep(1)
@@ -102,7 +101,7 @@ class NaverCafeCrawl(BaseDriver):
             userDisplay = 50
 
             self.driver.get(
-                self.target_url + 'ArticleList.nhn?search.clubid=' + str(self.clubid) + '&search.menuid=' + str(
+                self.target_url + '/ArticleList.nhn?search.clubid=' + str(self.clubid) + '&search.menuid=' + str(
                     menuid) + '&search.page=' + str(pageNum) + '&userDisplay=' + str(userDisplay))
             self.driver.switch_to.frame('cafe_main')  # iframe으로 접근
 
@@ -117,12 +116,12 @@ class NaverCafeCrawl(BaseDriver):
                 # print(article_title)
                 print(self.target_url + link)
 
-        with open(os.path.join('logs', 'links.txt'), 'w') as file:
+        with open(os.path.join('links', f'{self.file_name}_links.txt'), 'w') as file:
             file.write(links + '\n')
 
     def get_links(self):
-        if os.path.isfile('business_text_mining/logs/links.txt'):
-            with open(os.path.join('logs', 'links.txt'), 'r') as read_file:
+        if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt'):
+            with open(os.path.join('business_text_mining/links', f'{self.file_name}_links.txt'), 'r') as read_file:
                 lines = read_file.readlines()
             return lines
         else:
@@ -139,7 +138,7 @@ class NaverCafeCrawl(BaseDriver):
         Comment_count = []
 
         self.NAVER_CAFE()
-        if os.path.isfile('business_text_mining/logs/links.txt') != True:
+        if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt.txt') != True:
             self.save_links(pages=endpage)
 
         self.driver.quit()
@@ -148,7 +147,7 @@ class NaverCafeCrawl(BaseDriver):
         for link in links:
             self.NAVER_CAFE()
             self.driver.get(self.target_url + link)
-            title, user, date, count, comment_count, likescore, content, comment = self.Crawling(self.driver)
+            title, user, date, count, comment_count, likescore, content, comment = self.Crawling()
 
             Title.append(title)
             User.append(user)
