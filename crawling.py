@@ -182,5 +182,5 @@ class NaverCafeCrawl(BaseDriver):
             else:
                 continue
 
-# NaverCafeCrawl.run(target_url='https://cafe.naver.com/winerack24', clubid=20564405,menu='//*[@id="menuLink60"]',
-#                file_name='WINE_Q&A')
+# NaverCafeCrawl(target_url='https://cafe.naver.com/winerack24', clubid=20564405,menu='//*[@id="menuLink60"]',
+#                file_name='WINE_Q&A').run()

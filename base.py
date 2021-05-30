@@ -2,7 +2,7 @@ from datetime import datetime
 from abc import *
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from settings import driverPath
+from business_text_mining.settings import driverPath
 
 
 class BaseDriver(metaclass=ABCMeta):
