@@ -3,11 +3,14 @@ import os
 import re
 import time
 import json
+import pyperclip
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from bs4 import BeautifulSoup as bs
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup as bs
 from business_text_mining.base import BaseDriver
 
 
@@ -22,11 +25,25 @@ class NaverCafeCrawl(BaseDriver):
         self.file_name = 'WINE_Q&A'
 
     def Naver_login(self, my_id='sujinha927', my_pw='gkrksp0922'):
-        self.driver.execute_script("document.getElementsByName('id')[0].value =\'" + my_id + "\'")
-        self.driver.execute_script("document.getElementsByName('pw')[0].value =\'" + my_pw + "\'")
+        # self.driver.execute_script("document.getElementsByName('id')[0].value =\'" + my_id + "\'")
+        # self.driver.execute_script("document.getElementsByName('pw')[0].value =\'" + my_pw + "\'")
+        # time.sleep(1)
+        # # login button click
+        # self.driver.find_element_by_id("log.login").click()
+
+        self.clipboard_input('//*[@id="id"]', my_id)
+        self.clipboard_input('//*[@id="pw"]', my_pw)
+        self.driver.find_element_by_xpath('//*[@id="log.login"]').click()
         time.sleep(1)
-        # login button click
-        self.driver.find_element_by_id("log.login").click()
+
+    def clipboard_input(self, user_xpath, user_input):
+        temp_user_input = pyperclip.paste()
+
+        pyperclip.copy(user_input)
+        self.driver.find_element_by_xpath(user_xpath).click()
+        ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+
+        pyperclip.copy(temp_user_input)
         time.sleep(1)
 
     def NAVER_CAFE(self):
@@ -47,45 +64,52 @@ class NaverCafeCrawl(BaseDriver):
                 body = ''
         return body
 
-    def comments_crawling(self):
-        soup = bs(self.driver.page_source, 'lxml')
-        iscomment = soup.find_all('span', class_='text_comment')
-
+    def comments_crawling(self,page_soup):
+        iscomment = page_soup.find_all('div', class_='comm_cont')
         if len(iscomment) == 0:
             box = []
         else:
-            WebDriverWait(self.driver, 15).until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'text_comment')))
-            soup = bs(self.driver.page_source, 'lxml')
-            iscomment = soup.find_all('span', class_='text_comment')
+            WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comm_cont')))
+            iscomment = page_soup.find_all('div', class_='comm_cont')
             box = []
             for i in iscomment:
-                box.append(i.get_text())
+                box.append(i.find('span',class_='comm_body').text.strip())
         return box
 
     def Crawling(self):
         self.driver.implicitly_wait(10)
+        self.driver.switch_to.frame('cafe_main')
+        page_soup = bs(self.driver.page_source, 'html.parser')
+        content = page_soup.find('div', class_='inbox')
+        title = content.find('div', class_='tit-box').text.strip()
+        user = content.find('td', class_='p-nick').find('a',class_="m-tcol-c b").text.strip()
+        body = content.find("div", class_="se-main-container").text.strip()
+        date = content.find('td', class_='m-tcol-c date').text.strip()
+        count = content.findAll('span', class_='b m-tcol-c reply')[1].text.strip()
+        comment_count = content.find("td", class_="reply").find("a", class_="reply_btn b m-tcol-c m-tcol-p _totalCnt").text
+        comment = self.comments_crawling(page_soup)
 
-        title = self.driver.find_element_by_css_selector('h3.title_text').text  # 제목
-        user = self.driver.find_element_by_css_selector('div.nick_box').text
-        date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
-        count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
-        comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
-        likescore = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
-        body = self.body_crawling()  # 본문
-        comment = self.comments_crawling()  # 댓글
-        return title, user, date, count, comment_count, likescore, body, comment
+        # title = self.driver.find_element_by_css_selector('h3.title_text').text  # 제목
+        # user = self.driver.find_element_by_css_selector('div.nick_box').text
+        # date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
+        # count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
+        # comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
+        # likescore = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
+        # body = self.body_crawling()  # 본문
 
-    def save_json(self, name, Title, body, comments, User, Date, Count, likeScore, Comment_count):
+        return title, user, date, count, comment_count, body, comment
+
+    def save_json(self, name, Title, body, comments, User, Date, Count, Comment_count):
         C = []
         contents = dict()
-        for t, c, com, us, d, count, like, com_count in zip(Title, body, comments, User, Date, Count, likeScore,
-                                                            Comment_count):
+        for t, c, com, us, d, count, com_count in zip(Title, body, comments, User, Date, Count,
+                                                      Comment_count):
             contents["title"] = t
             contents["content"] = c
             contents["comments"] = com
             contents["date"] = d
             contents["count"] = count
-            contents["likescore"] = like
+            # contents["likescore"] = like
             contents["comments_count"] = com_count
             C.append(contents)
             contents = dict()
@@ -115,10 +139,11 @@ class NaverCafeCrawl(BaseDriver):
                 # article_title = article_title.get_text().strip()
                 links.append(link + '\n')
                 # print(article_title)
-                print(self.target_url + link)
+                # print(self.target_url + link)
         with open(f'business_text_mining/links/{self.file_name}_links.txt', 'w') as file:
             for l in links:
                 file.write(f'{l}')
+        print(f'--------SAVE  {self.file_name} LINKS -----')
 
     def get_links(self):
         if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt'):
@@ -128,46 +153,65 @@ class NaverCafeCrawl(BaseDriver):
         else:
             return ''
 
-    def run(self, endpage=1000, check=0, menu='', name=''):
+    def run(self, endpage=1000, check=0):
         Title = []
         body = []
         User = []
         Date = []
         Count = []
-        likeScore = []
+        # likeScore = []
         comments = []
         Comment_count = []
 
-        self.NAVER_CAFE()
-        # if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt.txt') != True:
-        # self.save_links(pages=endpage)
+        Error=[]
 
-        self.driver.quit()
+        if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
+            self.NAVER_CAFE()
+            self.save_links(pages=endpage)
+            self.driver.quit()
+
         links = [l for l in self.get_links() if l != '\n']
 
         for link in links:
-            self.NAVER_CAFE()
-            print(self.target_url+link.strip())
-            self.driver.get(self.target_url + '/' + link.strip())
-            title, user, date, count, comment_count, likescore, content, comment = self.Crawling()
+            try:
+                self.Naver_login()
+                self.driver.get(''.join([self.target_url, link.strip()]))
 
-            Title.append(title)
-            User.append(user)
-            Date.append(date)
-            Count.append(count)
-            Comment_count.append(comment_count)
-            likeScore.append(likescore)
-            body.append(content)
-            comments.append(comment)
+                title, user, date, count, comment_count, content, comment = self.Crawling()
 
-            self.driver.q()
+                Title.append(title)
+                User.append(user)
+                Date.append(date)
+                Count.append(count)
+                Comment_count.append(comment_count)
+                body.append(content)
+                comments.append(comment)
 
-            check += 1
-            if check % 100 == 0:
-                print('현재 %d개의 크롤링을 완료하였습니다.' % check)
+                self.driver.quit()
+
+                check += 1
+                if check % 100 == 0:
+                    print('현재 %d개의 크롤링을 완료하였습니다.' % check)
+                    self.save_json(name=f'{self.file_name}_{check}',
+                                   Title=Title, body=body, comments=comments, User=User, Date=Date, Count=Count,
+                                   Comment_count=Comment_count)
+                    print(f'save! {self.file_name}_{check}')
+                    Title = []
+                    body = []
+                    User = []
+                    Date = []
+                    Count = []
+                    # likeScore = []
+                    comments = []
+                    Comment_count = []
+
+                elif check == 1:
+                    print('첫 번째 크롤링이 성공적이었습니다.')
+                else:
+                    continue
+            except:
                 self.save_json(name=f'{self.file_name}_{check}',
                                Title=Title, body=body, comments=comments, User=User, Date=Date, Count=Count,
-                               likeScore=likeScore,
                                Comment_count=Comment_count)
                 print(f'save! {self.file_name}_{check}')
                 Title = []
@@ -175,13 +219,10 @@ class NaverCafeCrawl(BaseDriver):
                 User = []
                 Date = []
                 Count = []
-                likeScore = []
                 comments = []
                 Comment_count = []
-            elif check == 1:
-                print('첫 번째 크롤링이 성공적이었습니다.')
-            else:
-                continue
 
-# NaverCafeCrawl(target_url='https://cafe.naver.com/winerack24', clubid=20564405,menu='//*[@id="menuLink60"]',
-#                file_name='WINE_Q&A').run()
+                Error.append(link)
+        with open(f'Error_links.txt', 'w') as file:
+            for l in Error:
+                file.write(f'{l}')
