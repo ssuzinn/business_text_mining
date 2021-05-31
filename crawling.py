@@ -18,6 +18,8 @@ from business_text_mining.base import BaseDriver
 //*[@id="menuLink65"]' FREE 자유게시판
 //*[@id="menuLink78"]' 와인 추천하기&받기
 '''
+
+
 class NaverCafeCrawl(BaseDriver):
     baseurl = 'https://nid.naver.com/nidlogin.login'
 
@@ -25,20 +27,20 @@ class NaverCafeCrawl(BaseDriver):
         super().__init__()
         self.target_url = 'https://cafe.naver.com/winerack24'
         self.clubid = 20564405
-        self.menu = '//*[@id="menuLink65"]'
+        self.menu = 65
         self.file_name = 'WINE_FREE'
 
     def Naver_login(self, my_id='sujinha927', my_pw='gkrksp0922'):
-        # self.driver.execute_script("document.getElementsByName('id')[0].value =\'" + my_id + "\'")
-        # self.driver.execute_script("document.getElementsByName('pw')[0].value =\'" + my_pw + "\'")
-        # time.sleep(1)
-        # # login button click
-        # self.driver.find_element_by_id("log.login").click()
-
-        self.clipboard_input('//*[@id="id"]', my_id)
-        self.clipboard_input('//*[@id="pw"]', my_pw)
-        self.driver.find_element_by_xpath('//*[@id="log.login"]').click()
+        self.driver.execute_script("document.getElementsByName('id')[0].value =\'" + my_id + "\'")
+        self.driver.execute_script("document.getElementsByName('pw')[0].value =\'" + my_pw + "\'")
         time.sleep(1)
+        self.driver.find_element_by_id("log.login").click()
+        time.sleep(1)
+
+        # self.clipboard_input('//*[@id="id"]', my_id)
+        # self.clipboard_input('//*[@id="pw"]', my_pw)
+        # self.driver.find_element_by_xpath('//*[@id="log.login"]').click()
+        # time.sleep(1)
 
     def clipboard_input(self, user_xpath, user_input):
         temp_user_input = pyperclip.paste()
@@ -54,9 +56,9 @@ class NaverCafeCrawl(BaseDriver):
         self.Naver_login()
         self.driver.get(self.target_url)
         time.sleep(1)
-        self.driver.find_element_by_xpath(self.menu).click()
-        time.sleep(1)
-        self.driver.switch_to.frame('cafe_main')
+        #self.driver.switch_to.frame('cafe_main')
+        #self.driver.find_element_by_css_selector(self.menu).click()
+        #time.sleep(1)
 
     def body_crawling(self):
         try:
@@ -69,16 +71,31 @@ class NaverCafeCrawl(BaseDriver):
         return body
 
     def comments_crawling(self, page_soup):
-        iscomment = page_soup.find_all('div', class_='comm_cont')
-        if len(iscomment) == 0:
-            box = []
-        else:
-            WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comm_cont')))
+        try:
             iscomment = page_soup.find_all('div', class_='comm_cont')
-            box = []
-            for i in iscomment:
-                box.append(i.find('span', class_='comm_body').text.strip())
-        return box
+            if len(iscomment) == 0:
+                box = []
+            else:
+                WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comm_cont')))
+                iscomment = page_soup.find_all('div', class_='comm_cont')
+                box = []
+                for i in iscomment:
+                    box.append(i.find('span', class_='comm_body').text.strip())
+            return box
+        except:
+            soup = bs(self.driver.page_source, 'lxml')
+            iscomment = soup.find_all('span', class_='text_comment')
+            if len(iscomment) == 0:
+                box = []
+            else:
+                WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_all_elements_located((By.CLASS_NAME, 'text_comment')))
+                soup = bs(self.driver.page_source, 'lxml')
+                iscomment = soup.find_all('span', class_='text_comment')
+                box = []
+                for i in iscomment:
+                    box.append(i.get_text())
+            return box
 
     def Crawling(self):
         self.driver.implicitly_wait(10)
@@ -92,23 +109,27 @@ class NaverCafeCrawl(BaseDriver):
         count = content.findAll('span', class_='b m-tcol-c reply')[1].text.strip()
         comment_count = content.find("td", class_="reply").find("a",
                                                                 class_="reply_btn b m-tcol-c m-tcol-p _totalCnt").text
-        score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
+        if content.find("div", class_="like_empty"):
+            score = 0
+        else:
+            score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
         comment = self.comments_crawling(page_soup)
-
-        # title = self.driver.find_element_by_css_selector('h3.title_text').text  # 제목
-        # user = self.driver.find_element_by_css_selector('div.nick_box').text
-        # date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
-        # count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
-        # comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
-        # likescore = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
-        # body = self.body_crawling()  # 본문
+        # except:
+        #     title = self.driver.find_element_by_css_selector('div.h3.title_text').text  # 제목
+        #     user = self.driver.find_element_by_css_selector('div.nick_box').text
+        #     date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
+        #     count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
+        #     comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
+        #     score = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
+        #     body = self.body_crawling()  # 본문
+        #     comment = self.comments_crawling(page_soup)
 
         return date, count, comment_count, score, title, user, body, comment
 
     def save_json(self, crawled):
         crawled_texts = pd.DataFrame(crawled,
                                      columns=['날짜', '조회수', '댓글개수', '좋아요', '제목', '닉네임', '본문', '댓글'])
-        crawled_texts.to_json(f'./crawl_result/{self.file_name}.json', orient='table')
+        crawled_texts.to_json(f'business_text_mining/crawl_result/{self.file_name}.json', orient='table')
 
     def save_links(self, pages):
         # &search.menuid = : 게시판 번호
@@ -116,9 +137,8 @@ class NaverCafeCrawl(BaseDriver):
         # &userDisplay = 50 : 한 페이지에 보여질 게시글 수
         links = []
         for pageNum in range(1, pages + 1):
-            menuid = re.findall('\d+', self.menu)
+            menuid = self.menu
             userDisplay = 50
-
             self.driver.get(
                 self.target_url + '/ArticleList.nhn?search.clubid=' + str(self.clubid) + '&search.menuid=' + str(
                     menuid) + '&search.page=' + str(pageNum) + '&userDisplay=' + str(userDisplay))
@@ -149,36 +169,31 @@ class NaverCafeCrawl(BaseDriver):
 
     def run(self, endpage=1000, check=0):
         crawled = []
-        Error = []
         if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
+            print('get links!')
             self.NAVER_CAFE()
             self.save_links(pages=endpage)
             self.driver.quit()
         links = [l for l in self.get_links() if l != '\n']
-
         for link in links:
             try:
-                self.Naver_login()
+                self.NAVER_CAFE()
                 self.driver.get(''.join([self.target_url, link.strip()]))
-
                 crawled.append(self.Crawling())
-                self.driver.close()
-
                 check += 1
                 if check % 100 == 0:
                     print('현재 %d개의 크롤링을 완료하였습니다.' % check)
                     self.save_json(crawled)
                     print(f'save! {self.file_name}_{check}')
-
                 elif check == 1:
                     print('첫 번째 크롤링이 성공적이었습니다.')
                 else:
                     continue
-            except:
-                Error.append(link)
-        self.driver.quit()
-        self.save_json(crawled)
-        with open(f'Error_links.txt', 'w') as file:
-            for l in Error:
-                file.write(f'{l}')
 
+            except:
+                self.driver.get(''.join([self.target_url, link.strip()]))
+                time.sleep(5)
+                with open(f'business_text_mining/Error_links.txt', 'w') as file:
+                    file.write(f'{link}')
+        self.save_json(crawled)
+        self.driver.quit()
