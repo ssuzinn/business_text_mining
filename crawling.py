@@ -114,6 +114,7 @@ class NaverCafeCrawl(BaseDriver):
         else:
             score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
         comment = self.comments_crawling(page_soup)
+        print(title)
         # except:
         #     title = self.driver.find_element_by_css_selector('div.h3.title_text').text  # 제목
         #     user = self.driver.find_element_by_css_selector('div.nick_box').text
@@ -143,7 +144,6 @@ class NaverCafeCrawl(BaseDriver):
                 self.target_url + '/ArticleList.nhn?search.clubid=' + str(self.clubid) + '&search.menuid=' + str(
                     menuid) + '&search.page=' + str(pageNum) + '&userDisplay=' + str(userDisplay))
             self.driver.switch_to.frame('cafe_main')  # iframe으로 접근
-
             soup = bs(self.driver.page_source, 'html.parser')
             soup = soup.find_all(class_='article-board m-tcol-c')[1]  # 네이버 카페 구조 확인후 게시글 내용만 가저오기
             datas = soup.find_all(class_='td_article')
@@ -169,6 +169,7 @@ class NaverCafeCrawl(BaseDriver):
 
     def run(self, endpage=1000, check=0):
         crawled = []
+        E=[]
         if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
             print('get links!')
             self.NAVER_CAFE()
@@ -177,8 +178,12 @@ class NaverCafeCrawl(BaseDriver):
         links = [l for l in self.get_links() if l != '\n']
         for link in links:
             try:
-                self.NAVER_CAFE()
-                self.driver.get(''.join([self.target_url, link.strip()]))
+                try:
+                    self.NAVER_CAFE()
+                    self.driver.get(''.join([self.target_url, link.strip()]))
+                except:
+                    self.driver.get(''.join([self.target_url, link.strip()]))
+
                 crawled.append(self.Crawling())
                 check += 1
                 if check % 100 == 0:
@@ -189,11 +194,14 @@ class NaverCafeCrawl(BaseDriver):
                     print('첫 번째 크롤링이 성공적이었습니다.')
                 else:
                     continue
-
             except:
-                self.driver.get(''.join([self.target_url, link.strip()]))
-                time.sleep(5)
-                with open(f'business_text_mining/Error_links.txt', 'w') as file:
-                    file.write(f'{link}')
+                E.append(link)
+                check += 1
+                if check % 100 == 0:
+                    print('현재 %d개의 크롤링을 완료하였습니다.' % check)
+                    self.save_json(crawled)
         self.save_json(crawled)
         self.driver.quit()
+        with open(f'business_text_mining/Error_links.txt', 'w') as file:
+            for e in E:
+                file.write(f'{e}')
