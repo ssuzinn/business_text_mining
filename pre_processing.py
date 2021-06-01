@@ -11,6 +11,7 @@ class Pre_Process:
     def data_load(self):
         with open(self.data_name, 'r', encoding='utf-8')as f:
             self.data = json.load(f)
+        return pd.DataFrame(self.data)
     def clean_data(self):
         self.data_load()
         def clean_text(text):
@@ -20,7 +21,6 @@ class Pre_Process:
             text = re.sub('[^ ㄱ-ㅣ가-힣A-Za-z0-9!?.,~]+', ' ', text)
             text = re.sub('[\s *]', ' ', text)
             return text
-
         self.data['clean_content'] = self.data.본문.apply(lambda x: clean_text(x))
         self.data['clean_title'] = self.data.제목.apply(lambda x: clean_text(x))
         self.data['contents'] = self.data.clean_title + self.data.clean_content

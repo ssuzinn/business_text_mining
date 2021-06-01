@@ -56,9 +56,9 @@ class NaverCafeCrawl(BaseDriver):
         self.Naver_login()
         self.driver.get(self.target_url)
         time.sleep(1)
-        #self.driver.switch_to.frame('cafe_main')
-        #self.driver.find_element_by_css_selector(self.menu).click()
-        #time.sleep(1)
+        # self.driver.switch_to.frame('cafe_main')
+        # self.driver.find_element_by_css_selector(self.menu).click()
+        # time.sleep(1)
 
     def body_crawling(self):
         try:
@@ -70,19 +70,8 @@ class NaverCafeCrawl(BaseDriver):
                 body = ''
         return body
 
-    def comments_crawling(self, page_soup):
+    def comments_crawling(self):
         try:
-            iscomment = page_soup.find_all('div', class_='comm_cont')
-            if len(iscomment) == 0:
-                box = []
-            else:
-                WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comm_cont')))
-                iscomment = page_soup.find_all('div', class_='comm_cont')
-                box = []
-                for i in iscomment:
-                    box.append(i.find('span', class_='comm_body').text.strip())
-            return box
-        except:
             soup = bs(self.driver.page_source, 'lxml')
             iscomment = soup.find_all('span', class_='text_comment')
             if len(iscomment) == 0:
@@ -96,35 +85,50 @@ class NaverCafeCrawl(BaseDriver):
                 for i in iscomment:
                     box.append(i.get_text())
             return box
+        except:
+            page_soup = bs(self.driver.page_source, 'html.parser')
+            iscomment = page_soup.find_all('div', class_='comm_cont')
+            if len(iscomment) == 0:
+                box = []
+            else:
+                WebDriverWait(self.driver, 10).until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comm_cont')))
+                iscomment = page_soup.find_all('div', class_='comm_cont')
+                box = []
+                for i in iscomment:
+                    box.append(i.find('span', class_='comm_body').text.strip())
+            return box
 
     def Crawling(self):
         self.driver.implicitly_wait(10)
-        self.driver.switch_to.frame('cafe_main')
-        page_soup = bs(self.driver.page_source, 'html.parser')
-        content = page_soup.find('div', class_='inbox')
-        title = content.find('div', class_='tit-box').text.strip()
-        user = content.find('td', class_='p-nick').find('a', class_="m-tcol-c b").text.strip()
-        body = content.find("div", class_="se-main-container").text.strip()
-        date = content.find('td', class_='m-tcol-c date').text.strip()
-        count = content.findAll('span', class_='b m-tcol-c reply')[1].text.strip()
-        comment_count = content.find("td", class_="reply").find("a",
-                                                                class_="reply_btn b m-tcol-c m-tcol-p _totalCnt").text
-        if content.find("div", class_="like_empty"):
-            score = 0
-        else:
-            score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
-        comment = self.comments_crawling(page_soup)
-        print(title)
-        # except:
-        #     title = self.driver.find_element_by_css_selector('div.h3.title_text').text  # 제목
-        #     user = self.driver.find_element_by_css_selector('div.nick_box').text
-        #     date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
-        #     count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
-        #     comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
-        #     score = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
-        #     body = self.body_crawling()  # 본문
-        #     comment = self.comments_crawling(page_soup)
+        try:
+            title = self.driver.find_element_by_css_selector('div.h3.title_text').text  # 제목
+            user = self.driver.find_element_by_css_selector('div.nick_box').text
+            date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
+            count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
+            comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
+            score = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
+            body = self.body_crawling()  # 본문
+            comment = self.comments_crawling()
 
+            print(date, count, comment_count, score, title, user, body, comment)
+        except:
+            self.driver.switch_to.frame('cafe_main')
+            page_soup = bs(self.driver.page_source, 'html.parser')
+            content = page_soup.find('div', class_='inbox')
+
+            title = content.find('div', class_='tit-box').text.strip()
+            user = content.find('td', class_='p-nick').find('a', class_="m-tcol-c b").text.strip()
+            body = content.find("div", class_="se-main-container").text.strip()
+            date = content.find('td', class_='m-tcol-c date').text.strip()
+            count = content.findAll('span', class_='b m-tcol-c reply')[1].text.strip()
+            comment_count = content.find("td", class_="reply").find("a",
+                                                                    class_="reply_btn b m-tcol-c m-tcol-p _totalCnt").text
+            if content.find("div", class_="like_empty"):
+                score = 0
+            else:
+                score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
+            comment = self.comments_crawling()
+            print(date, count, comment_count, score, title, user, body, comment)
         return date, count, comment_count, score, title, user, body, comment
 
     def save_json(self, crawled):
@@ -166,10 +170,9 @@ class NaverCafeCrawl(BaseDriver):
             return lines
         else:
             return ''
-
     def run(self, endpage=1000, check=0):
         crawled = []
-        E=[]
+        E = []
         if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
             print('get links!')
             self.NAVER_CAFE()
@@ -178,12 +181,11 @@ class NaverCafeCrawl(BaseDriver):
         links = [l for l in self.get_links() if l != '\n']
         for link in links:
             try:
-                try:
+                if check ==0:
                     self.NAVER_CAFE()
                     self.driver.get(''.join([self.target_url, link.strip()]))
-                except:
+                else:
                     self.driver.get(''.join([self.target_url, link.strip()]))
-
                 crawled.append(self.Crawling())
                 check += 1
                 if check % 100 == 0:
@@ -197,9 +199,11 @@ class NaverCafeCrawl(BaseDriver):
             except:
                 E.append(link)
                 check += 1
+                print('!!!!!')
                 if check % 100 == 0:
                     print('현재 %d개의 크롤링을 완료하였습니다.' % check)
                     self.save_json(crawled)
+
         self.save_json(crawled)
         self.driver.quit()
         with open(f'business_text_mining/Error_links.txt', 'w') as file:
