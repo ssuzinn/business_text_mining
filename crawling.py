@@ -59,7 +59,8 @@ class NaverCafeCrawl(BaseDriver):
         time.sleep(1)
         if self.save_link != True:
             self.driver.switch_to.frame('cafe_main')
-            self.driver.find_element_by_css_selector(f'//*[@id="menuLink{self.menu}"]').click()
+            x_path=f'//*[@id="menuLink{self.menu}"]'
+            self.driver.find_element_by_xpath(f'//*[@id="menuLink{self.menu}"]').click()
             time.sleep(1)
 
     def body_crawling(self):
@@ -138,7 +139,7 @@ class NaverCafeCrawl(BaseDriver):
     def save_json(self, crawled):
         crawled_texts = pd.DataFrame(crawled,
                                      columns=['날짜', '조회수', '댓글개수', '좋아요', '제목', '닉네임', '본문', '댓글'])
-        crawled_texts.to_json(f'business_text_mining/crawl_result/{self.file_name}.json', orient='table')
+        crawled_texts.to_json(f'business_text_mining/crawl_result/{self.file_name}_text.json', orient='table')
 
     def save_links(self, pages):
         # &search.menuid = : 게시판 번호
