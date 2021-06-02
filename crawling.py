@@ -23,12 +23,13 @@ from business_text_mining.base import BaseDriver
 class NaverCafeCrawl(BaseDriver):
     baseurl = 'https://nid.naver.com/nidlogin.login'
 
-    def __init__(self):
+    def __init__(self, menu=65, file_name='WINE_FREE', save_link=True):
         super().__init__()
         self.target_url = 'https://cafe.naver.com/winerack24'
         self.clubid = 20564405
-        self.menu = 65
-        self.file_name = 'WINE_FREE'
+        self.menu = menu
+        self.file_name = file_name
+        self.save_link = save_link
 
     def Naver_login(self, my_id='sujinha927', my_pw='gkrksp0922'):
         self.driver.execute_script("document.getElementsByName('id')[0].value =\'" + my_id + "\'")
@@ -56,9 +57,10 @@ class NaverCafeCrawl(BaseDriver):
         self.Naver_login()
         self.driver.get(self.target_url)
         time.sleep(1)
-        # self.driver.switch_to.frame('cafe_main')
-        # self.driver.find_element_by_css_selector(self.menu).click()
-        # time.sleep(1)
+        if self.save_link != True:
+            self.driver.switch_to.frame('cafe_main')
+            self.driver.find_element_by_css_selector(f'//*[@id="menuLink{self.menu}"]').click()
+            time.sleep(1)
 
     def body_crawling(self):
         try:
@@ -100,7 +102,27 @@ class NaverCafeCrawl(BaseDriver):
 
     def Crawling(self):
         self.driver.implicitly_wait(10)
-        try:
+        if self.save_link:
+            self.driver.switch_to.frame('cafe_main')
+            page_soup = bs(self.driver.page_source, 'html.parser')
+            content = page_soup.find('div', class_='inbox')
+            title = content.find('div', class_='tit-box').text.replace('\n', '').replace('\t', '').strip()
+            user = content.find('td', class_='p-nick').find('a', class_="m-tcol-c b").text.replace('\n', '').replace(
+                '\t', '').strip()
+            body = content.find("div", class_="se-main-container").text.replace('\n', '').replace('\t', '').strip()
+            date = content.find('td', class_='m-tcol-c date').text.replace('\n', '').replace('\t', '').strip()
+            count = content.findAll('span', class_='b m-tcol-c reply')[1].text.replace('\n', '').replace('\t',
+                                                                                                         '').strip()
+            comment_count = content.find("td", class_="reply").find("a",
+                                                                    class_="reply_btn b m-tcol-c m-tcol-p _totalCnt").replace(
+                '\n', '').replace('\t', '').strip()
+            if content.find("div", class_="like_empty"):
+                score = 0
+            else:
+                score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
+            comment = self.comments_crawling()
+
+        else:
             title = self.driver.find_element_by_css_selector('div.h3.title_text').text  # 제목
             user = self.driver.find_element_by_css_selector('div.nick_box').text
             date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
@@ -110,25 +132,7 @@ class NaverCafeCrawl(BaseDriver):
             body = self.body_crawling()  # 본문
             comment = self.comments_crawling()
 
-            print(date, count, comment_count, score, title, user, body, comment)
-        except:
-            self.driver.switch_to.frame('cafe_main')
-            page_soup = bs(self.driver.page_source, 'html.parser')
-            content = page_soup.find('div', class_='inbox')
-
-            title = content.find('div', class_='tit-box').text.strip()
-            user = content.find('td', class_='p-nick').find('a', class_="m-tcol-c b").text.strip()
-            body = content.find("div", class_="se-main-container").text.strip()
-            date = content.find('td', class_='m-tcol-c date').text.strip()
-            count = content.findAll('span', class_='b m-tcol-c reply')[1].text.strip()
-            comment_count = content.find("td", class_="reply").find("a",
-                                                                    class_="reply_btn b m-tcol-c m-tcol-p _totalCnt").text
-            if content.find("div", class_="like_empty"):
-                score = 0
-            else:
-                score = content.find("div", class_="like_article").find("em", class_="u_cnt _count").text
-            comment = self.comments_crawling()
-            print(date, count, comment_count, score, title, user, body, comment)
+        print(title)
         return date, count, comment_count, score, title, user, body, comment
 
     def save_json(self, crawled):
@@ -156,7 +160,6 @@ class NaverCafeCrawl(BaseDriver):
                 link = article_title.get('href')
                 # article_title = article_title.get_text().strip()
                 links.append(link + '\n')
-                # print(article_title)
                 # print(self.target_url + link)
         with open(f'business_text_mining/links/{self.file_name}_links.txt', 'w') as file:
             for l in links:
@@ -170,42 +173,81 @@ class NaverCafeCrawl(BaseDriver):
             return lines
         else:
             return ''
+
     def run(self, endpage=1000, check=0):
         crawled = []
         E = []
-        if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
-            print('get links!')
-            self.NAVER_CAFE()
-            self.save_links(pages=endpage)
+        if self.save_link:
+            if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
+                print('get links!')
+                self.NAVER_CAFE()
+                self.save_links(pages=endpage)
+                self.driver.quit()
+            links = [l for l in self.get_links() if l != '\n']
+            for link in links:
+                try:
+                    if check == 0:
+                        self.NAVER_CAFE()
+                        self.driver.get(''.join([self.target_url, link.strip()]))
+                    else:
+                        self.driver.get(''.join([self.target_url, link.strip()]))
+                    crawled.append(self.Crawling())
+                    check += 1
+                    if check % 100 == 0:
+                        print(f'현재 {len(links)}개 중 {check}개의 크롤링을 완료하였습니다.')
+                        self.save_json(crawled)
+                        print(f'save! {self.file_name}_{check}')
+                    elif check == 1:
+                        print('첫 번째 크롤링이 성공적이었습니다.')
+                    else:
+                        continue
+                except:
+                    E.append(link)
+                    check += 1
+                    if check % 100 == 0:
+                        print(f'현재 {len(links)}개 중 {check}개의 크롤링을 완료하였습니다.'
+                              f'ERROR : {len(E)}개 ')
+                        self.save_json(crawled)
             self.driver.quit()
-        links = [l for l in self.get_links() if l != '\n']
-        for link in links:
-            try:
-                if check ==0:
-                    self.NAVER_CAFE()
-                    self.driver.get(''.join([self.target_url, link.strip()]))
-                else:
-                    self.driver.get(''.join([self.target_url, link.strip()]))
-                crawled.append(self.Crawling())
-                check += 1
-                if check % 100 == 0:
-                    print('현재 %d개의 크롤링을 완료하였습니다.' % check)
-                    self.save_json(crawled)
-                    print(f'save! {self.file_name}_{check}')
-                elif check == 1:
-                    print('첫 번째 크롤링이 성공적이었습니다.')
-                else:
-                    continue
-            except:
-                E.append(link)
-                check += 1
-                print('!!!!!')
-                if check % 100 == 0:
-                    print('현재 %d개의 크롤링을 완료하였습니다.' % check)
-                    self.save_json(crawled)
-
-        self.save_json(crawled)
-        self.driver.quit()
-        with open(f'business_text_mining/Error_links.txt', 'w') as file:
-            for e in E:
-                file.write(f'{e}')
+            self.save_json(crawled)
+            with open(f'business_text_mining/Error_links.txt', 'w') as file:
+                for e in E:
+                    file.write(f'{e}')
+        else:
+            self.NAVER_CAFE()
+            if check == 0:
+                self.driver.switch_to.frame('cafe_main')
+            for k in range(200):
+                for t in range(250):
+                    try:
+                        crawled.append(self.Crawling())
+                        next_button = self.driver.find_element_by_xpath('//*[@id="app"]/div/div/div[1]/div[2]/a[1]')
+                        if next_button.text != '다음글':
+                            next_button = self.driver.find_element_by_xpath('//*[@id="app"]/div/div/div[1]/div[2]/a[2]')
+                        next_link = next_button.get_attribute('href')
+                        check += 1
+                        if check % 100 == 0:
+                            print(f'현재 {check}개의 크롤링을 완료하였습니다.')
+                        elif check == 1:
+                            print('첫 번째 크롤링이 성공적이었습니다.')
+                        else:
+                            pass
+                        # 다음글클릭
+                        self.driver.find_element_by_css_selector(
+                            '#app > div > div > div.ArticleTopBtns > div.right_area > a.BaseButton.btn_next.BaseButton--skinGray.size_default > span').click()
+                        self.driver.implicitly_wait(20)
+                    except:
+                        self.driver.get(next_link)
+                        self.driver.switch_to.frame('cafe_main')
+                        time.sleep(5)
+                        with open('error_logs.txt', 'w') as file:
+                            file.write(next_link)
+                # 중간저장
+                self.save_json(crawled)
+                # 크롬이 다시 열릴때 가지고 올 다음 링크를 가져오기
+                self.driver.close()
+                self.NAVER_CAFE()
+                self.driver.switch_to.frame('cafe_main')
+                time.sleep(5)
+            self.driver.quit()
+            self.save_json(crawled)

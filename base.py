@@ -9,7 +9,7 @@ class BaseDriver(metaclass=ABCMeta):
     baseurl = ''
     def __init__(self):
         options = webdriver.ChromeOptions()
-        #options.add_argument('headless')  # 창 안띄우고 크롤링
+        options.add_argument('headless')  # 창 안띄우고 크롤링
         options.add_argument('--disable-gpu')
         options.add_argument('window-size=1920x1080')
         options.add_argument("--no-sandbox")
