@@ -1,12 +1,11 @@
-from datetime import datetime
 from abc import *
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from business_text_mining.settings import driverPath
 
 
 class BaseDriver(metaclass=ABCMeta):
     baseurl = ''
+
     def __init__(self):
         options = webdriver.ChromeOptions()
         options.add_argument('headless')  # 창 안띄우고 크롤링
@@ -21,4 +20,3 @@ class BaseDriver(metaclass=ABCMeta):
 
     def q(self):
         self.driver.quit()
-
