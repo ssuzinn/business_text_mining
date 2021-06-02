@@ -22,7 +22,6 @@ from business_text_mining.base import BaseDriver
 
 class NaverCafeCrawl(BaseDriver):
     baseurl = 'https://nid.naver.com/nidlogin.login'
-
     def __init__(self, menu=65, file_name='WINE_FREE', save_link=True):
         super().__init__()
         self.target_url = 'https://cafe.naver.com/winerack24'
@@ -58,8 +57,6 @@ class NaverCafeCrawl(BaseDriver):
         self.driver.get(self.target_url)
         time.sleep(1)
         if self.save_link != True:
-            self.driver.switch_to.frame('cafe_main')
-            x_path=f'//*[@id="menuLink{self.menu}"]'
             self.driver.find_element_by_xpath(f'//*[@id="menuLink{self.menu}"]').click()
             time.sleep(1)
 
@@ -124,12 +121,14 @@ class NaverCafeCrawl(BaseDriver):
             comment = self.comments_crawling()
 
         else:
-            title = self.driver.find_element_by_css_selector('div.h3.title_text').text  # 제목
-            user = self.driver.find_element_by_css_selector('div.nick_box').text
             date = self.driver.find_element_by_css_selector('span.date').text  # 날짜
             count = self.driver.find_element_by_css_selector('span.count').text  # 조회수
             comment_count = self.driver.find_element_by_css_selector('strong.num').text  # 댓글수
             score = self.driver.find_element_by_css_selector('em.u_cnt._count').text  # 좋아요
+
+            time.sleep(1)
+            title = self.driver.find_element_by_css_selector('h3.title_text').text  # 제목
+            user = self.driver.find_element_by_css_selector('div.nick_box').text  # 유저이름
             body = self.body_crawling()  # 본문
             comment = self.comments_crawling()
 
@@ -215,47 +214,47 @@ class NaverCafeCrawl(BaseDriver):
                 for e in E:
                     file.write(f'{e}')
         else:
-            self.NAVER_CAFE()
             if check == 0:
+                self.NAVER_CAFE() # 이미 switch frame 되어있음
                 self.driver.switch_to.frame('cafe_main')
-            for k in range(200):
-                for t in range(250):
-                    try:
-                        crawled.append(self.Crawling())
-                        next_button = self.driver.find_element_by_xpath('//*[@id="app"]/div/div/div[1]/div[2]/a[1]')
-                        if next_button.text != '다음글':
-                            next_button = self.driver.find_element_by_xpath('//*[@id="app"]/div/div/div[1]/div[2]/a[2]')
-                        next_link = next_button.get_attribute('href')
-                        check += 1
-                        if check % 100 == 0:
-                            print(f'현재 {check}개의 크롤링을 완료하였습니다.')
-                        elif check == 1:
-                            print('첫 번째 크롤링이 성공적이었습니다.')
-                        else:
-                            pass
-                        # 다음글클릭
-                        self.driver.find_element_by_css_selector(
-                            '#app > div > div > div.ArticleTopBtns > div.right_area > a.BaseButton.btn_next.BaseButton--skinGray.size_default > span').click()
-                        self.driver.implicitly_wait(20)
-                    except:
-                        self.driver.get(next_link)
-                        self.driver.switch_to.frame('cafe_main')
-                        time.sleep(5)
-                        with open('error_logs.txt', 'w') as file:
-                            file.write(next_link)
-                # 중간저장
-                self.save_json(crawled)
-                # 크롬이 다시 열릴때 가지고 올 다음 링크를 가져오기
-                self.driver.close()
-                self.NAVER_CAFE()
-                self.driver.switch_to.frame('cafe_main')
-                time.sleep(5)
+                self.driver.find_element_by_xpath(
+                    '//*[@id="main-area"]/div[4]/table/tbody/tr[1]/td[1]/div[2]/div/a[1]').click()
+
+            for k in range(50000):
+                global next_link
+                try:
+                    crawled.append(self.Crawling())
+                    next_button = self.driver.find_element_by_xpath('//*[@id="app"]/div/div/div[1]/div[2]/a[1]')
+                    if next_button.text != '다음글':
+                        next_button = self.driver.find_element_by_xpath('//*[@id="app"]/div/div/div[1]/div[2]/a[2]')
+                    next_link = next_button.get_attribute('href')
+                    check += 1
+                    if check % 100 == 0:
+                        print(f'현재 {check}개의 크롤링을 완료하였습니다.')
+                        # 중간저장
+                        self.save_json(crawled)
+                    elif check == 1:
+                        print('첫 번째 크롤링이 성공적이었습니다.')
+                    else:
+                        pass
+                    # 다음글클릭
+                    self.driver.find_element_by_css_selector(
+                        '#app > div > div > div.ArticleTopBtns > div.right_area > a.BaseButton.btn_next.BaseButton--skinGray.size_default > span').click()
+                    self.driver.implicitly_wait(20)
+                except:
+                    E.append(next_link)
+                    self.driver.get(next_link)
+                    self.driver.switch_to.frame('cafe_main')
+                    time.sleep(5)
+                    with open('error_logs.txt', 'w') as file:
+                        file.write(next_link)
             self.driver.quit()
             self.save_json(crawled)
+            with open(f'business_text_mining/Error_links.txt', 'w') as file:
+                for e in E:
+                    file.write(f'{e}')
 
 
 if platform.system() == 'Linux':
     if __name__ == '__main__':
         NaverCafeCrawl(save_link=False).run()
-
-
