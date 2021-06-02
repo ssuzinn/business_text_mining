@@ -1,6 +1,6 @@
 # Settings
 import os
-import re
+import platform
 import time
 import pyperclip
 import pandas as pd
@@ -251,3 +251,10 @@ class NaverCafeCrawl(BaseDriver):
                 time.sleep(5)
             self.driver.quit()
             self.save_json(crawled)
+
+
+if platform.system() == 'Linux':
+    if __name__ == '__main__':
+        NaverCafeCrawl(save_link=False).run()
+
+
