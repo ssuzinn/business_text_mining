@@ -1,6 +1,5 @@
 # Settings
 import os
-import platform
 import time
 import pyperclip
 import pandas as pd
@@ -11,7 +10,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup as bs
-from business_text_mining.base import BaseDriver
+from base import BaseDriver
 
 '''
 //*[@id="menuLink60"]' Q&A
@@ -138,7 +137,7 @@ class NaverCafeCrawl(BaseDriver):
     def save_json(self, crawled):
         crawled_texts = pd.DataFrame(crawled,
                                      columns=['날짜', '조회수', '댓글개수', '좋아요', '제목', '닉네임', '본문', '댓글'])
-        crawled_texts.to_json(f'business_text_mining/crawl_result/{self.file_name}_text.json', orient='table')
+        crawled_texts.to_json(f'crawl_result/{self.file_name}_text.json', orient='table')
 
     def save_links(self, pages):
         # &search.menuid = : 게시판 번호
@@ -161,14 +160,14 @@ class NaverCafeCrawl(BaseDriver):
                 # article_title = article_title.get_text().strip()
                 links.append(link + '\n')
                 # print(self.target_url + link)
-        with open(f'business_text_mining/links/{self.file_name}_links.txt', 'w') as file:
+        with open(f'links/{self.file_name}_links.txt', 'w') as file:
             for l in links:
                 file.write(f'{l}')
         print(f'--------SAVE  {self.file_name} LINKS -----')
 
     def get_links(self):
-        if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt'):
-            with open(os.path.join('business_text_mining/links', f'{self.file_name}_links.txt'), 'r') as read_file:
+        if os.path.isfile(f'links/{self.file_name}_links.txt'):
+            with open(os.path.join('../links', f'{self.file_name}_links.txt'), 'r') as read_file:
                 lines = read_file.readlines()
             return lines
         else:
@@ -178,7 +177,7 @@ class NaverCafeCrawl(BaseDriver):
         crawled = []
         E = []
         if self.save_link:
-            if os.path.isfile(f'business_text_mining/links/{self.file_name}_links.txt') != True:
+            if os.path.isfile(f'links/{self.file_name}_links.txt') != True:
                 print('get links!')
                 self.NAVER_CAFE()
                 self.save_links(pages=endpage)
@@ -210,7 +209,7 @@ class NaverCafeCrawl(BaseDriver):
                         self.save_json(crawled)
             self.driver.quit()
             self.save_json(crawled)
-            with open(f'business_text_mining/Error_links.txt', 'w') as file:
+            with open(f'Error_links.txt', 'w') as file:
                 for e in E:
                     file.write(f'{e}')
         else:
@@ -246,15 +245,13 @@ class NaverCafeCrawl(BaseDriver):
                     self.driver.get(next_link)
                     self.driver.switch_to.frame('cafe_main')
                     time.sleep(5)
-                    with open('error_logs.txt', 'w') as file:
+                    with open('../error/error_logs.txt', 'w') as file:
                         file.write(next_link)
             self.driver.quit()
             self.save_json(crawled)
-            with open(f'business_text_mining/Error_links.txt', 'w') as file:
+            with open(f'Error_links.txt', 'w') as file:
                 for e in E:
                     file.write(f'{e}')
-
-
-if platform.system() == 'Linux':
-    if __name__ == '__main__':
-        NaverCafeCrawl(save_link=False).run()
+#if platform.system() == 'Linux':
+if __name__ == '__main__':
+    NaverCafeCrawl(save_link=False).run()

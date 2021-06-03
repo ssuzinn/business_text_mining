@@ -1,6 +1,6 @@
 from abc import *
 from selenium import webdriver
-from business_text_mining.settings import driverPath
+from settings import driverPath
 
 
 class BaseDriver(metaclass=ABCMeta):
