@@ -55,7 +55,16 @@ def LDA(DF,num):
     lda = LatentDirichletAllocation(n_components=num)
     lda.fit(tfidf)
     topic = display_topics(lda, tfidv.get_feature_names(), 20)
-    return topic
+    return topic,lda,tfidf
+
+def LDA_DOCS(DF,num):
+    topics,model,matrix = LDA(DF,num)
+    topics_df = pd.DataFrame(topics)
+    topic_dist = model.transform(matrix)
+    DF['topic label'] = topic_dist.argmax(1)
+    DF['topic prob'] = topic_dist.max(1)
+    return DF, topics_df
+
 
 def GensimLDA(DF,NUM_TOPICS):
     Token = DF.NOUNS

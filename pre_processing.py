@@ -37,7 +37,9 @@ class Pre_Process:
                                    "]+", flags=re.UNICODE)
         text = emoji_pattern.sub(r'', text)
         re_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),|]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+        delete_pattern=r'----------------------------------------------------\n ★와쌉★ 와인 싸게 사는 사람들 [안내사항] \n 1. 등업 & 행사 글 가장 먼저 확인하는 법!! (알람 설정 방법)  <--클릭!\n '
         text = re.sub(re_pattern, 'url', text)
+        text = re.sub(delete_pattern, ' ', text)
         text = re.sub('\([^)]*\)', ',', text)
         text = re.sub('\[[^)]*\]', ',', text)
         text = re.sub('[^ㄱ-ㅎ ㅏ-ㅣ가-힣A-Za-z0-9!?]+', ' ', text)
@@ -124,9 +126,9 @@ class Pre_Process:
 
         New = []
         Total = []
-        Stopwords = ['클릭', '소통', '등급', '감사', '안녕', '리딩', '답변', '댓글', '엄청','등급', '기본', '안내', '규정', '체계',
+        Stopwords = ['클릭', '소통', '등급', '감사', '안녕', '리딩', '답변', '댓글', '엄청', '기본', '안내', '규정', '체계',
                      '오늘', '친구', ' ᆸ', '확인', '글', '일', '와인', '드리다', '계시다','되다', '있다', '여쭈다',
-                     '마리아','쥬브','하다', '가다', '나다', '스파클', '페어', '리슬','알다', '계시다', '나오다',
+                     '마리아','쥬브','하다', '가다', '나다', '스파클', '페어', '리슬','알다', '계시다', '나오다','와쌉',
                      '들다', '부탁', '사다', '어떻다', '대하다','되다', '보다', '보이다', '나누다', '이야기', '즐기다', '살다', '비다','먹다',
                      '마시다', '같다', '좋다']
         for ind in tqdm(range(len(DF))):
@@ -167,6 +169,8 @@ class Pre_Process:
             plt.imshow(lightwordcloud)
             lightwordcloud.to_file('WordCloud.jpg')
         return COUNT_DF
+
+
 
     # Not Use
     def Tokeninzing(DF):
