@@ -29,7 +29,7 @@ class NaverCafeCrawl(BaseDriver):
         self.file_name = file_name
         self.save_link = save_link
 
-    def Naver_login(self, my_id='sujinha927', my_pw='gkrksp0922'):
+    def Naver_login(self, my_id, my_pw):
         self.driver.execute_script("document.getElementsByName('id')[0].value =\'" + my_id + "\'")
         self.driver.execute_script("document.getElementsByName('pw')[0].value =\'" + my_pw + "\'")
         time.sleep(1)
